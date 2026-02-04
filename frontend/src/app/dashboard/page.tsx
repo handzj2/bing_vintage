@@ -73,23 +73,23 @@ export default function DashboardPage() {
     }
   };
 
-  // Calculate Admin Metrics from local loans data - COMPLETELY FIXED VERSION
+  // Calculate Admin Metrics from local loans data - ALL FIXES APPLIED
   const calculateAdminMetrics = (loans: Loan[]) => {
     if (loans.length === 0) return;
     
-    // FIX 1: Total outstanding balance with :any
+    // FIX: Total outstanding balance with :any
     const totalOutstanding = loans.reduce((sum, loan: any) => {
       const outstanding = loan.metrics?.total_outstanding || loan.outstanding_balance || 0;
       return sum + Number(outstanding);
     }, 0);
     
-    // FIX 2: PAR 30 loans with :any
+    // FIX: PAR 30 loans with :any
     const par30Loans = loans.filter((loan: any) => {
       const daysArrears = loan.metrics?.days_in_arrears || loan.days_overdue || 0;
       return daysArrears >= 30;
     });
     
-    // FIX 3: Admin reversals and staff collections with :any
+    // FIX: Admin reversals and staff collections with :any
     let adminReversals = 0;
     let staffCollections = 0;
     let totalTransactions = 0;
@@ -109,8 +109,8 @@ export default function DashboardPage() {
       }
     });
     
-    // Calculate delinquency rate
-    const delinquentLoans = loans.filter(loan => 
+    // FIX: Delinquent loans filter with :any
+    const delinquentLoans = loans.filter((loan: any) => 
       loan.status === 'delinquent' || loan.lifecycle_status === 'delinquent' || loan.status === 'overdue'
     );
     
@@ -119,7 +119,7 @@ export default function DashboardPage() {
       ? loans.reduce((sum, loan) => sum + (loan.amount || loan.loan_amount || 0), 0) / loans.length 
       : 0;
     
-    // FIX 4: Average days delinquent with :any
+    // FIX: Average days delinquent with :any
     const delinquentDays = delinquentLoans.reduce((sum, loan: any) => {
       const days = loan.metrics?.days_in_arrears || loan.days_overdue || 0;
       return sum + Number(days);
