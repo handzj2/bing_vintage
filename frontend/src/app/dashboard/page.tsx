@@ -8,9 +8,8 @@ import { api } from '@/lib/api/client';
 import { DashboardStats, RecentActivity, Loan, Client } from '@/lib/api/types';
 import { DollarSign, Users, Bike, CreditCard, TrendingUp, Calendar, Package, Clock, CheckCircle, AlertCircle, PlusCircle, FileText, Receipt, Shield, Eye, EyeOff, Lock, Unlock, BarChart, Activity, TrendingDown } from 'lucide-react';
 import Link from 'next/link';
-import { toast } from 'react-hot-toast'; // Added for timeout notification
+import { toast } from 'react-hot-toast';
 
-// Admin Metrics Interface
 interface AdminMetrics {
   totalOutstandingBalance: number;
   par30: number;
@@ -31,7 +30,6 @@ export default function DashboardPage() {
   const [localLoans, setLocalLoans] = useState<Loan[]>([]);
   const [localClients, setLocalClients] = useState<Client[]>([]);
   
-  // Admin Metrics State
   const [adminMetrics, setAdminMetrics] = useState<AdminMetrics>({
     totalOutstandingBalance: 0,
     par30: 0,
@@ -44,16 +42,12 @@ export default function DashboardPage() {
   });
   const [showAdminMetrics, setShowAdminMetrics] = useState(false);
 
-  // FIX: Updated useEffect with sequential logic
   useEffect(() => {
     if (!user) {
       router.push('/auth/login');
     } else {
-      // FIX: Load local data first so the screen isn't empty
       const local = fetchLocalData(); 
-      // Then fetch API data using the local data as a starting point
       fetchDashboardData(local.loans, local.clients);
-      // If user is admin, calculate admin metrics
       if (user.role === 'admin') {
         calculateAdminMetrics(local.loans);
         setShowAdminMetrics(true);
@@ -61,7 +55,6 @@ export default function DashboardPage() {
     }
   }, [user, router]);
 
-  // FIX: Update fetchLocalData to return values
   const fetchLocalData = () => {
     try {
       const loansData = localStorage.getItem('mock_loans_data');
@@ -80,32 +73,31 @@ export default function DashboardPage() {
     }
   };
 
-  // Calculate Admin Metrics from local loans data - FIXED VERSION
+  // Calculate Admin Metrics from local loans data - COMPLETELY FIXED VERSION
   const calculateAdminMetrics = (loans: Loan[]) => {
     if (loans.length === 0) return;
     
-    // FIX 1: Calculate total outstanding balance with :any type
+    // FIX 1: Total outstanding balance with :any
     const totalOutstanding = loans.reduce((sum, loan: any) => {
-      // Use 'any' type temporarily to bypass the strict check
       const outstanding = loan.metrics?.total_outstanding || loan.outstanding_balance || 0;
       return sum + Number(outstanding);
     }, 0);
     
-    // FIX 2: Calculate PAR 30 (loans 30+ days delinquent) with :any type
+    // FIX 2: PAR 30 loans with :any
     const par30Loans = loans.filter((loan: any) => {
       const daysArrears = loan.metrics?.days_in_arrears || loan.days_overdue || 0;
       return daysArrears >= 30;
     });
     
-    // Count admin reversals from audit logs
+    // FIX 3: Admin reversals and staff collections with :any
     let adminReversals = 0;
     let staffCollections = 0;
     let totalTransactions = 0;
     
-    loans.forEach(loan => {
+    loans.forEach((loan: any) => {
       if (loan.audit_log) {
-        loan.audit_log.forEach(log => {
-          if (log.action.includes('PAYMENT')) {
+        loan.audit_log.forEach((log: any) => {
+          if (log.action && log.action.includes('PAYMENT')) {
             totalTransactions++;
             if (log.user && log.user.toLowerCase().includes('admin')) {
               adminReversals++;
@@ -127,7 +119,7 @@ export default function DashboardPage() {
       ? loans.reduce((sum, loan) => sum + (loan.amount || loan.loan_amount || 0), 0) / loans.length 
       : 0;
     
-    // FIX 3: Calculate average days delinquent with :any type
+    // FIX 4: Average days delinquent with :any
     const delinquentDays = delinquentLoans.reduce((sum, loan: any) => {
       const days = loan.metrics?.days_in_arrears || loan.days_overdue || 0;
       return sum + Number(days);
@@ -146,7 +138,6 @@ export default function DashboardPage() {
     });
   };
 
-  // FIX: Add helper function to calculate initial stats from local data
   const calculateInitialStats = (loans: Loan[], clients: Client[]) => {
     const activeLocalLoans = loans.filter(loan => loan.status === 'active');
     const overdueLocalLoans = loans.filter(loan => loan.status === 'overdue');
@@ -155,7 +146,6 @@ export default function DashboardPage() {
     
     const totalLocalPortfolio = loans.reduce((sum, loan) => sum + (loan.loan_amount || loan.amount || 0), 0);
     const todayCollection = loans.reduce((sum, loan) => {
-      // Simulate some collection for demo
       if (loan.status === 'active' && Math.random() > 0.5) {
         return sum + (loan.monthly_payment || 0);
       }
@@ -184,10 +174,8 @@ export default function DashboardPage() {
     
     setStats(initialStats);
     
-    // Create initial activities from local data
     const mockActivities: RecentActivity[] = [];
     
-    // Add recent loan activities
     loans.slice(-3).forEach((loan: Loan) => {
       const timestamp = loan.created_at || new Date().toISOString();
       mockActivities.push({
@@ -200,7 +188,6 @@ export default function DashboardPage() {
       });
     });
     
-    // Add client activities
     clients.slice(-2).forEach((client: Client) => {
       mockActivities.push({
         id: `mock-client-${client.id}`,
@@ -212,7 +199,6 @@ export default function DashboardPage() {
       });
     });
     
-    // Sort activities (newest first) and get latest 5
     const initialActivities = mockActivities
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 5);
@@ -220,55 +206,44 @@ export default function DashboardPage() {
     setActivities(initialActivities);
   };
 
-  // FIX: UPDATED - Merge API data with localStorage data with sequential loading
   const fetchDashboardData = async (startingLoans: Loan[], startingClients: Client[]) => {
-    // FIX: Declare timeoutId at function scope so it's accessible in finally block
     let timeoutId: NodeJS.Timeout | null = null;
     
     try {
-      // FIX: Start with local data so the user sees something immediately
       calculateInitialStats(startingLoans, startingClients);
       
       if (startingLoans.length === 0 && startingClients.length === 0) {
-        // Only show loading if we have no local data
         setLoading(true);
       }
       
-      // FIX: Set a timeout: If API takes more than 5 seconds, stop loading and just show local
       timeoutId = setTimeout(() => {
         setLoading(false);
         console.log("Using offline data - Server taking too long");
         toast.error("Using offline data - Server taking too long");
       }, 5000);
 
-      // 1. Fetch live data from API in the background
       let apiStats: DashboardStats | null = null;
       let apiActivities: RecentActivity[] = [];
       
       try {
-        // Fetch dashboard stats
         const statsResponse = await api.get<DashboardStats>('/dashboard/stats');
         if (statsResponse.success && statsResponse.data) {
           apiStats = statsResponse.data;
         }
         
-        // Fetch recent activities
         const activitiesResponse = await api.get<RecentActivity[]>('/dashboard/activities');
         if (activitiesResponse.success && activitiesResponse.data) {
           apiActivities = activitiesResponse.data;
         }
         
-        // Clear timeout if API responds successfully
         if (timeoutId) {
           clearTimeout(timeoutId);
           timeoutId = null;
         }
       } catch (apiError) {
         console.log('API fetch failed, using fallback data:', apiError);
-        // API failed, continue with local data
       }
       
-      // 2. Calculate stats from localStorage (using the provided starting data)
       const activeLocalLoans = startingLoans.filter(loan => loan.status === 'active');
       const overdueLocalLoans = startingLoans.filter(loan => loan.status === 'overdue');
       const pendingLocalLoans = startingLoans.filter(loan => loan.status === 'pending' || loan.status === 'under_review');
@@ -276,14 +251,12 @@ export default function DashboardPage() {
       
       const totalLocalPortfolio = startingLoans.reduce((sum, loan) => sum + (loan.loan_amount || loan.amount || 0), 0);
       const todayCollection = startingLoans.reduce((sum, loan) => {
-        // Simulate some collection for demo
         if (loan.status === 'active' && Math.random() > 0.5) {
           return sum + (loan.monthly_payment || 0);
         }
         return sum;
       }, 0);
       
-      // 3. Merge Live + Mock Stats
       const defaultStats: DashboardStats = {
         total_portfolio: 0,
         active_clients: 0,
@@ -312,7 +285,6 @@ export default function DashboardPage() {
         pending_applications: (apiStats?.pending_applications || 0) + pendingLocalLoans.length,
         total_clients: (apiStats?.total_clients || 0) + startingClients.length,
         total_disbursed: (apiStats?.total_disbursed || 0) + totalLocalPortfolio,
-        // For demo purposes, calculate some derived stats
         approval_rate: startingLoans.length > 0 ? 
           Math.round((completedLocalLoans.length / startingLoans.length) * 100) : 
           (apiStats?.approval_rate || 85),
@@ -327,10 +299,8 @@ export default function DashboardPage() {
       
       setStats(finalStats);
 
-      // 4. Create activities from localStorage
       const mockActivities: RecentActivity[] = [];
       
-      // Add recent loan activities
       startingLoans.slice(-3).forEach((loan: Loan) => {
         const timestamp = loan.created_at || new Date().toISOString();
         mockActivities.push({
@@ -343,7 +313,6 @@ export default function DashboardPage() {
         });
       });
       
-      // Add client activities
       startingClients.slice(-2).forEach((client: Client) => {
         mockActivities.push({
           id: `mock-client-${client.id}`,
@@ -355,25 +324,20 @@ export default function DashboardPage() {
         });
       });
 
-      // 5. Merge and sort activities (newest first)
       const allActivities = [...apiActivities, ...mockActivities]
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         .slice(0, 5);
       
       setActivities(allActivities);
       
-      // Update admin metrics if user is admin
       if (user && user.role === 'admin') {
         calculateAdminMetrics(startingLoans);
       }
       
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
-      // Use fallback data if everything fails
-      // This shouldn't happen since we already set initial data
     } finally {
       setLoading(false);
-      // FIX: Now timeoutId is accessible here because it's declared at function scope
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
@@ -424,7 +388,6 @@ export default function DashboardPage() {
     }
   };
 
-  // FIX: Show loading only when we have NO data at all
   if (!user || (loading && localLoans.length === 0 && localClients.length === 0 && !stats)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -524,7 +487,6 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6">
-      {/* Header with welcome */}
       <div className="mb-8">
         <div className="flex justify-between items-center">
           <div>
@@ -579,7 +541,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ADMIN PULSE VIEW - Governance Metrics */}
       {user.role === 'admin' && showAdminMetrics && (
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
@@ -590,7 +551,6 @@ export default function DashboardPage() {
             </span>
           </div>
           
-          {/* Main Governance Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white rounded-xl p-6 shadow-lg">
               <div className="flex items-center gap-3 mb-4">
@@ -657,7 +617,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Secondary Governance Metrics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white border border-gray-200 rounded-xl p-4">
               <div className="flex items-center justify-between">
@@ -732,7 +691,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Policy Compliance Note */}
           <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
             <div className="flex items-start gap-3">
               <Shield className="h-5 w-5 text-slate-600 flex-shrink-0 mt-0.5" />
@@ -750,7 +708,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
@@ -778,9 +735,7 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Recent Activities */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Recent Activities</h3>
@@ -826,7 +781,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Quick Actions */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
@@ -859,7 +813,6 @@ export default function DashboardPage() {
             })}
           </div>
           
-          {/* Local Storage Info */}
           {(localLoans.length > 0 || localClients.length > 0) && (
             <div className="mt-6 pt-6 border-t border-gray-200">
               <div className="flex items-center gap-2 mb-3">
@@ -890,7 +843,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Bottom Stats */}
       {stats && (
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
