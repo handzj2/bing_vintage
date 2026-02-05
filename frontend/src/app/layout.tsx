@@ -1,10 +1,8 @@
-import type { Metadata } from 'next';
 import './globals.css';
-import { AuthProvider } from '@/contexts/AuthContext';
 
-export const metadata: Metadata = {
-  title: 'Bingo Vintage - Lending System',
-  description: 'Hybrid lending system for cash and bike loans',
+export const metadata = {
+  title: 'Bingo Vintage',
+  description: 'Loan Management System',
 };
 
 export default function RootLayout({
@@ -14,15 +12,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
-      </head>
-      <body className="antialiased">
-        <AuthProvider>
-          {children}
-        </AuthProvider>
-      </body>
+      <body className="bg-gray-100">{children}</body>
     </html>
   );
 }
