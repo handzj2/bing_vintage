@@ -1,0 +1,1 @@
+Write-Host "Fixing all pages..." -ForegroundColor Green
