@@ -26,68 +26,29 @@ import { SyncModule } from './modules/sync/sync.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const databaseUrl = configService.get<string>('DATABASE_URL');
-        
-        // Parse Railway DATABASE_URL
-        if (databaseUrl) {
-          const url = new URL(databaseUrl);
-          const dbName = url.pathname.replace('/', ''); // Remove leading slash
-          
-          const config: any = {
-            type: 'postgres',
-            host: url.hostname,
-            port: parseInt(url.port || '5432'),
-            username: decodeURIComponent(url.username),
-            password: decodeURIComponent(url.password),
-            database: dbName,
-            entities: [__dirname + '/**/*.entity{.ts,.js}'],
-            synchronize: true,
-            logging: false,
-            ssl: { rejectUnauthorized: false },
-            extra: {
-              max: 20,
-              connectionTimeoutMillis: 10000,
-            },
-          };
-          return config;
-        }
-        
-        // Fallback to individual PG* variables
-        const pgHost = configService.get<string>('PGHOST');
-        if (pgHost) {
-          const config: any = {
-            type: 'postgres',
-            host: pgHost,
-            port: parseInt(configService.get('PGPORT', '5432')),
-            username: configService.get('PGUSER', 'postgres'),
-            password: configService.get('PGPASSWORD', ''),
-            database: configService.get('PGDATABASE', 'railway'),
-            entities: [__dirname + '/**/*.entity{.ts,.js}'],
-            synchronize: true,
-            logging: false,
-            ssl: { rejectUnauthorized: false },
-            extra: {
-              max: 20,
-              connectionTimeoutMillis: 10000,
-            },
-          };
-          return config;
-        }
-        
-        // Local development
-        const config: any = {
+        const nodeEnv = configService.get<string>('NODE_ENV', 'development');
+
+        return {
           type: 'postgres',
-          host: configService.get('DB_HOST', 'localhost'),
-          port: configService.get<number>('DB_PORT', 5432),
-          username: configService.get('DB_USERNAME', 'postgres'),
-          password: configService.get('DB_PASSWORD', '@1'),
-          database: configService.get('DB_NAME', 'bikesure_db'),
+          // 🔗 This single line replaces all the hostname/password parsing
+          url: databaseUrl,
+          autoLoadEntities: true,
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
-          synchronize: true,
-          logging: true,
+
+          // 🛡️ Security: Disable sync in production to protect your immutable ledger
+          synchronize: nodeEnv !== 'production',
+
+          // 🔒 SSL is required for Railway Postgres production connections
+          ssl: nodeEnv === 'production' ? { rejectUnauthorized: false } : false,
+
+          extra: {
+            max: 20,
+            connectionTimeoutMillis: 10000,
+          },
         };
-        return config;
       },
     }),
+    // Your business modules
     AuthModule,
     ClientsModule,
     LoansModule,
