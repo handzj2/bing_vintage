@@ -14,11 +14,12 @@ async function bootstrap() {
   
   app.enableCors({
     origin: [
-      'http://localhost:3000', 
-      'http://localhost:3005', 
+      'http://localhost:3000',
+      'http://localhost:3005',
       'http://localhost:5000',
+      'https://bingo-vintage.vercel.app', // ✅ Add your Vercel link here
       'https://bingvintage-production.up.railway.app',
-    ], 
+    ],
     credentials: true,
   });
 
