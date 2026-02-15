@@ -33,7 +33,7 @@ async function bootstrap() {
   
   // 4. Mount Swagger at /api/docs
   // This ensures your docs live inside the /api prefix correctly
-  SwaggerModule.setup('docs', app, document, {
+  SwaggerModule.setup('api/docs', app, document, {
     swaggerOptions: { persistAuthorization: true },
     customSiteTitle: 'BikeSure API Docs',
   });
