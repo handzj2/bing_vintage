@@ -28,7 +28,7 @@ import { SyncModule } from './modules/sync/sync.module';
         const databaseUrl = configService.get<string>('DATABASE_URL');
         const nodeEnv = configService.get<string>('NODE_ENV', 'development');
         
-        // 🔒 SAFETY: Only allow sync in local development
+        // 🔒 SAFETY: Only allow sync in development to protect immutable ledger
         const enableSync = configService.get<string>('SYNCHRONIZE', 'false') === 'true' 
           && nodeEnv === 'development';
 
@@ -37,31 +37,23 @@ import { SyncModule } from './modules/sync/sync.module';
           url: databaseUrl,
           autoLoadEntities: true,
           
-          // ✅ FIX: String-based pathing ensures the compiled JS is found in production
+          // ✅ FIX: Only load compiled .js files in production. 
+          // Do NOT include /src/ in production entities.
           entities: [
             nodeEnv === 'production' 
               ? 'dist/**/*.entity.js' 
               : 'src/**/*.entity.ts'
           ],
           
-          // 🛡️ PROTECTION: Enforces your [2026-01-10] policy by locking the schema in prod
           synchronize: enableSync,
+          ssl: nodeEnv === 'production' ? { rejectUnauthorized: false } : false,
           
-          // 📊 Connection Pool management
           extra: {
             max: 20,
             connectionTimeoutMillis: 10000,
-            idleTimeoutMillis: 30000,
           },
           
-          // 🔒 SSL required for Railway production
-          ssl: nodeEnv === 'production' 
-            ? { rejectUnauthorized: false } 
-            : false,
-            
-          logging: nodeEnv === 'development' 
-            ? ['error', 'warn', 'schema'] 
-            : ['error'],
+          logging: nodeEnv === 'development' ? ['error', 'warn', 'schema'] : ['error'],
         };
       },
     }),
