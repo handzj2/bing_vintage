@@ -41,7 +41,7 @@ import { SyncModule } from './modules/sync/sync.module';
           synchronize: nodeEnv !== 'production',
 
           // 🔒 Required for Railway Postgres production
-          ssl: nodeEnv === 'production' ? { rejectUnauthorized: false } : false,
+          ssl: nodeEnv === false, ? { rejectUnauthorized: false } : false,
 
           extra: {
             max: 20,
