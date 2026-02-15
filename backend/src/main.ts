@@ -38,7 +38,7 @@ async function bootstrap() {
     .setTitle('Bingo_vintage API')
     .setDescription('Motorcycle Loan Management System API')
     .setVersion('1.0')
-    .addServer('https://bingvintage-production.up.railway.app/api', 'Production')
+    .addServer('https://bingvintage-production.up.railway.app/', 'Production')
     .addServer('http://localhost:5000/api', 'Local Development')
     .addBearerAuth(
       {
