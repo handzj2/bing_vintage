@@ -1,4 +1,3 @@
-// src/app.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -27,26 +26,37 @@ import { SyncModule } from './modules/sync/sync.module';
       useFactory: (configService: ConfigService) => {
         const databaseUrl = configService.get<string>('DATABASE_URL');
         const nodeEnv = configService.get<string>('NODE_ENV', 'development');
+        
+        // 🔒 SAFETY: Never auto-synchronize in production or staging
+        // Set SYNCHRONIZE=true in .env ONLY for local development resets
+        const enableSync = configService.get<string>('SYNCHRONIZE', 'false') === 'true' 
+          && nodeEnv === 'development';
 
         return {
           type: 'postgres',
-          // 🔗 Uses the full Railway connection string automatically
-          url: databaseUrl, 
+          url: databaseUrl,
           autoLoadEntities: true,
-          // 📂 Points to compiled JS in dist for production and TS in src for local
-          entities: [__dirname + '/**/*.entity{.ts,.js}'], 
-
-          // 🛡️ SECURITY: synchronize is FALSE in production to prevent data loss.
-          // This supports your [2026-01-10] policy of no-deletion/reversal.
-          synchronize: nodeEnv !== 'production',
-
-          // 🔒 Required for Railway Postgres production
-          ssl: nodeEnv === false, ? { rejectUnauthorized: false } : false,
-
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          
+          // 🛡️ PROTECTION: Explicit opt-in required even for dev
+          synchronize: enableSync,
+          
+          // 📊 Prevents connection pool exhaustion
           extra: {
             max: 20,
             connectionTimeoutMillis: 10000,
+            idleTimeoutMillis: 30000,
           },
+          
+          // 🔒 SSL for production only
+          ssl: nodeEnv === 'production' 
+            ? { rejectUnauthorized: false } 
+            : false,
+            
+          // 📝 Logging control
+          logging: nodeEnv === 'development' 
+            ? ['error', 'warn', 'schema'] 
+            : ['error'],
         };
       },
     }),
