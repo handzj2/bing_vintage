@@ -1,33 +1,75 @@
-// src/main.ts
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from 'helmet';
+import compression from 'compression';
+import { AppModule } from './app.module';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // 1. Enable CORS for your Vercel frontend
+  // Security & Optimization
+  app.use(helmet());
+  app.use(compression());
+  
   app.enableCors({
-    origin: ['https://bingo-vintage.vercel.app'], 
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3005',
+      'http://localhost:5000',
+      'https://bingo-vintage.vercel.app', // ✅ Add your Vercel link here
+      'https://bingvintage-production.up.railway.app',
+    ],
     credentials: true,
   });
 
-  // 2. Set Global Prefix FIRST
+  // Data Validation
+  app.useGlobalPipes(new ValidationPipe({ 
+    whitelist: true, 
+    transform: true,
+    forbidNonWhitelisted: true,
+  }));
+
+  // STEP 1: Add global prefix FIRST
   app.setGlobalPrefix('api');
 
-  // 3. Configure Swagger
+  // STEP 2: Setup Swagger AFTER prefix (so it appears at /api/docs)
   const config = new DocumentBuilder()
     .setTitle('Bingo_vintage API')
+    .setDescription('Motorcycle Loan Management System API')
     .setVersion('1.0')
-    // ✅ REMOVE "/api" from the end of this URL
-    .addServer('https://bingvintage-production.up.railway.app', 'Production') 
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT-auth')
+    .addServer('https://bingvintage-production.up.railway.app/', 'Production')
+    .addServer('http://localhost:5000/api', 'Local Development')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Enter JWT token',
+        in: 'header',
+      },
+      'JWT-auth',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
   
-  // 4. Setup Swagger with Global Prefix
+  // Setup Swagger at /api/docs (after prefix is set)
   SwaggerModule.setup('docs', app, document, {
-    useGlobalPrefix: true, // 👈 This makes the URL /api/docs work correctly
-    swaggerOptions: { persistAuthorization: true },
+    swaggerOptions: {
+      persistAuthorization: true,
+      tagsSorter: 'alpha',
+      operationsSorter: 'alpha',
+    },
+    customSiteTitle: 'BikeSure API Docs',
   });
 
-  await app.listen(process.env.PORT || 8080, '0.0.0.0');
+  const port = process.env.PORT || 8080;
+  await app.listen(port, '0.0.0.0');
+  
+  console.log(`🚀 Application is running on: http://localhost:${port}`);
+  console.log(`📚 Swagger UI available at: http://localhost:${port}/api/docs`);
+  console.log(`🔐 API endpoints: http://localhost:${port}/api/auth/...`);
 }
 bootstrap();
