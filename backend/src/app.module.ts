@@ -1,3 +1,4 @@
+// src/app.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -27,8 +28,7 @@ import { SyncModule } from './modules/sync/sync.module';
         const databaseUrl = configService.get<string>('DATABASE_URL');
         const nodeEnv = configService.get<string>('NODE_ENV', 'development');
         
-        // 🔒 SAFETY: Never auto-synchronize in production or staging
-        // Set SYNCHRONIZE=true in .env ONLY for local development resets
+        // 🔒 SAFETY: Only allow sync in local development
         const enableSync = configService.get<string>('SYNCHRONIZE', 'false') === 'true' 
           && nodeEnv === 'development';
 
@@ -36,24 +36,29 @@ import { SyncModule } from './modules/sync/sync.module';
           type: 'postgres',
           url: databaseUrl,
           autoLoadEntities: true,
-          entities: [__dirname + '/**/*.entity{.ts,.js}'],
           
-          // 🛡️ PROTECTION: Explicit opt-in required even for dev
+          // ✅ FIX: String-based pathing ensures the compiled JS is found in production
+          entities: [
+            nodeEnv === 'production' 
+              ? 'dist/**/*.entity.js' 
+              : 'src/**/*.entity.ts'
+          ],
+          
+          // 🛡️ PROTECTION: Enforces your [2026-01-10] policy by locking the schema in prod
           synchronize: enableSync,
           
-          // 📊 Prevents connection pool exhaustion
+          // 📊 Connection Pool management
           extra: {
             max: 20,
             connectionTimeoutMillis: 10000,
             idleTimeoutMillis: 30000,
           },
           
-          // 🔒 SSL for production only
+          // 🔒 SSL required for Railway production
           ssl: nodeEnv === 'production' 
             ? { rejectUnauthorized: false } 
             : false,
             
-          // 📝 Logging control
           logging: nodeEnv === 'development' 
             ? ['error', 'warn', 'schema'] 
             : ['error'],
