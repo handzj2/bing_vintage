@@ -1,17 +1,20 @@
-// src/main.ts
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
-import * as compression from 'compression'; // ✅ Correct way to import compression
 import { AppModule } from './app.module';
+
+// ✅ FIX: Import compression properly for CommonJS compatibility
+import compression from 'compression';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Security & Optimization
   app.use(helmet());
-  app.use(compression()); // ✅ This will now work as a function
+  
+  // ✅ FIX: compression is now correctly imported as default export
+  app.use(compression());
   
   app.enableCors({
     origin: [
