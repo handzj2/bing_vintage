@@ -3,43 +3,39 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
-import * as compression from 'compression';
+import * as compression from 'compression'; // ✅ Correct way to import compression
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // 1. Security & Optimization
+  // Security & Optimization
   app.use(helmet());
-  app.use(compression());
+  app.use(compression()); // ✅ This will now work as a function
   
   app.enableCors({
     origin: [
       'http://localhost:3000', 
-      'https://bingo-vintage.vercel.app', // Authorized Frontend
+      'https://bingo-vintage.vercel.app', 
       'https://bingvintage-production.up.railway.app',
     ], 
     credentials: true,
   });
 
-  // 2. Global Prefix (Applied to ALL routes)
   app.setGlobalPrefix('api');
 
-  // 3. Swagger Configuration
   const config = new DocumentBuilder()
     .setTitle('Bingo_vintage API')
     .setDescription('Motorcycle Loan Management System API')
     .setVersion('1.0')
-    // REMOVED "/api" from here to prevent the double-prefix 404 error
-    .addServer('https://bingvintage-production.up.railway.app', 'Production') 
+    .addServer('https://bingvintage-production.up.railway.app', 'Production')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT-auth')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
   
-  // 4. Setup Swagger with Global Prefix compatibility
   SwaggerModule.setup('docs', app, document, {
-    useGlobalPrefix: true, // This makes docs available at /api/docs
+    useGlobalPrefix: true, 
     swaggerOptions: { persistAuthorization: true },
     customSiteTitle: 'BikeSure API Docs',
   });
