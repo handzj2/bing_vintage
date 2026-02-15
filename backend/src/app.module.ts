@@ -1,4 +1,3 @@
-// src/app.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -26,38 +25,49 @@ import { SyncModule } from './modules/sync/sync.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const databaseUrl = configService.get<string>('DATABASE_URL');
-        const nodeEnv = configService.get<string>('NODE_ENV', 'development');
         
-        // 🔒 SAFETY: Only allow sync in development to protect immutable ledger
-        const enableSync = configService.get<string>('SYNCHRONIZE', 'false') === 'true' 
-          && nodeEnv === 'development';
+        // ✅ FIX: Check multiple possible env var names
+        const nodeEnv = configService.get<string>('NODE_ENV') 
+          || process.env.NODE_ENV 
+          || 'development';
+        
+        // Railway sets NODE_ENV=production automatically
+        const isProduction = nodeEnv === 'production';
+
+        console.log(`🔧 Environment: ${nodeEnv}`);
+        console.log(`📦 Production mode: ${isProduction}`);
 
         return {
           type: 'postgres',
           url: databaseUrl,
+          
+          // ✅ FIX: Use autoLoadEntities (recommended) OR explicit JS path
+          // autoLoadEntities: true loads from imported modules, not filesystem
           autoLoadEntities: true,
           
-          // ✅ FIX: Only load compiled .js files in production. 
-          // Do NOT include /src/ in production entities.
-          entities: [
-            nodeEnv === 'production' 
-              ? 'dist/**/*.entity.js' 
-              : 'src/**/*.entity.ts'
-          ],
+          // ✅ FIX: Only use glob if autoLoadEntities fails
+          // In production, ONLY look for .js files in dist/
+          entities: isProduction 
+            ? [__dirname + '/../**/*.entity.js']  // Compiled JS only
+            : [__dirname + '/../**/*.entity.ts'], // TS in dev
           
-          synchronize: enableSync,
-          ssl: nodeEnv === 'production' ? { rejectUnauthorized: false } : false,
+          // 🛡️ NEVER synchronize in production
+          synchronize: !isProduction && configService.get('SYNCHRONIZE') === 'true',
           
           extra: {
             max: 20,
             connectionTimeoutMillis: 10000,
+            idleTimeoutMillis: 30000,
           },
           
-          logging: nodeEnv === 'development' ? ['error', 'warn', 'schema'] : ['error'],
+          ssl: isProduction 
+            ? { rejectUnauthorized: false } 
+            : false,
+            
+          logging: isProduction ? ['error'] : ['error', 'warn'],
         };
       },
     }),
-    // Business Logic Modules
     AuthModule,
     ClientsModule,
     LoansModule,
