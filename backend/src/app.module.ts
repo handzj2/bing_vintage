@@ -1,4 +1,4 @@
-// FIXED: src/app.module.ts
+// src/app.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -30,15 +30,17 @@ import { SyncModule } from './modules/sync/sync.module';
 
         return {
           type: 'postgres',
-          // 🔗 This single line replaces all the hostname/password parsing
-          url: databaseUrl,
+          // 🔗 Uses the full Railway connection string automatically
+          url: databaseUrl, 
           autoLoadEntities: true,
-          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          // 📂 Points to compiled JS in dist for production and TS in src for local
+          entities: [__dirname + '/**/*.entity{.ts,.js}'], 
 
-          // 🛡️ Security: Disable sync in production to protect your immutable ledger
+          // 🛡️ SECURITY: synchronize is FALSE in production to prevent data loss.
+          // This supports your [2026-01-10] policy of no-deletion/reversal.
           synchronize: nodeEnv !== 'production',
 
-          // 🔒 SSL is required for Railway Postgres production connections
+          // 🔒 Required for Railway Postgres production
           ssl: nodeEnv === 'production' ? { rejectUnauthorized: false } : false,
 
           extra: {
@@ -48,7 +50,7 @@ import { SyncModule } from './modules/sync/sync.module';
         };
       },
     }),
-    // Your business modules
+    // Business Logic Modules
     AuthModule,
     ClientsModule,
     LoansModule,
@@ -62,7 +64,5 @@ import { SyncModule } from './modules/sync/sync.module';
     ReceiptsModule,
     SyncModule,
   ],
-  controllers: [],
-  providers: [],
 })
 export class AppModule {}
