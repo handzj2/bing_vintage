@@ -2,43 +2,49 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
-import { AppModule } from './app.module';
-
-// ✅ FIX: Import compression properly for CommonJS compatibility
 import compression from 'compression';
+import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Security & Optimization
   app.use(helmet());
-  
-  // ✅ FIX: compression is now correctly imported as default export
   app.use(compression());
   
+  // 🛡️ FIX: Added wildcard for Vercel and fixed the CORS handshake
   app.enableCors({
     origin: [
       'http://localhost:3000', 
       'https://bingo-vintage.vercel.app', 
       'https://bingvintage-production.up.railway.app',
+      /\.vercel\.app$/, // Allows all Vercel preview/branch deployments
     ], 
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 
+  // 🌍 Global Prefix - IMPORTANT: All frontend URLs must include /api/
   app.setGlobalPrefix('api');
+
+  app.useGlobalPipes(new ValidationPipe({ 
+    whitelist: true, 
+    transform: true,
+  }));
 
   const config = new DocumentBuilder()
     .setTitle('Bingo_vintage API')
     .setDescription('Motorcycle Loan Management System API')
     .setVersion('1.0')
-    .addServer('https://bingvintage-production.up.railway.app', 'Production')
+    // ✅ FIX: Added /api to the production server URL
+    .addServer('https://bingvintage-production.up.railway.app/api', 'Production')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT-auth')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
   
+  // Swagger will be at /api/docs
   SwaggerModule.setup('docs', app, document, {
-    useGlobalPrefix: true, 
     swaggerOptions: { persistAuthorization: true },
     customSiteTitle: 'BikeSure API Docs',
   });
